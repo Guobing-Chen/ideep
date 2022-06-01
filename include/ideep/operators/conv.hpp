@@ -1,6 +1,5 @@
 #ifndef IDEEP_OPERATORS_CONV_HPP
 #define IDEEP_OPERATORS_CONV_HPP
-
 namespace ideep {
 
 struct convolution_forward_params {
@@ -11,6 +10,18 @@ struct convolution_forward_params {
   zero_point_t src_zero_point;
   int groups;
   tensor scratchpad;
+};
+
+struct convolution_forward_fast_params {
+  dnnl::convolution_forward::primitive_desc & _pd;
+  dnnl::convolution_forward & _primitive;
+  // may enable global scratchpad later
+  //tensor & scratchpad;
+
+  convolution_forward_fast_params(dnnl::convolution_forward::primitive_desc & pd,
+                                  dnnl::convolution_forward & primitive)
+                                  : _pd(pd), _primitive(primitive)
+  {}
 };
 
 struct conv_deconv_utils {
@@ -375,38 +386,36 @@ struct convolution_forward
     do_compute</*with_bias=*/false>(param, src, weights, dummy_bias, dst);
   }
 
-  // Compute with given primitive & src zero point with or without bias
-  static void compute(const super::primitive_desc pd,
-                      const super& primitive,
-                      const tensor& src,
-                      const tensor& weights,
+  // Compute with given primitive with or without bias
+  static void compute(const convolution_forward_fast_params& fast_params,
+                      const tensor& expected_src,
+                      const tensor& expected_weights,
                       const tensor& expected_bias,
-                      tensor& dst,
+                      tensor& expected_dst,
+                      int groups) {
+    if (expected_bias.is_empty()) {
+      do_compute</*with_bias=*/false>(
+          fast_params, expected_src, expected_weights, expected_bias, expected_dst, groups);
+    } else {
+      do_compute</*with_bias=*/true>(
+          fast_params, expected_src, expected_weights, expected_bias, expected_dst, groups);
+    }
+  }
+
+  // Compute with given primitive & src zero point with or without bias
+  static void compute(const convolution_forward_fast_params& fast_params,
+                      const tensor& expected_src,
+                      const tensor& expected_weights,
+                      const tensor& expected_bias,
+                      tensor& expected_dst,
                       const tensor& src_zero_point,
                       int groups) {
     if (expected_bias.is_empty()) {
       do_compute</*with_bias=*/false>(
-          pd, primitive, src, weights, expected_bias, dst, src_zero_point, groups);
+          fast_params, expected_src, expected_weights, expected_bias, expected_dst, src_zero_point, groups);
     } else {
       do_compute</*with_bias=*/true>(
-          pd, primitive, src, weights, expected_bias, dst, src_zero_point, groups);
-    }
-  }
-
-  // Compute with given primitive with or without bias
-  static void compute(const super::primitive_desc pd,
-                      const super& primitive,
-                      const tensor& src,
-                      const tensor& weights,
-                      const tensor& expected_bias,
-                      tensor& dst,
-                      int groups) {
-    if (expected_bias.is_empty()) {
-      do_compute</*with_bias=*/false>(
-          pd, primitive, src, weights, expected_bias, dst, groups);
-    } else {
-      do_compute</*with_bias=*/true>(
-          pd, primitive, src, weights, expected_bias, dst, groups);
+          fast_params, expected_src, expected_weights, expected_bias, expected_dst, src_zero_point, groups);
     }
   }
 
@@ -827,62 +836,59 @@ private:
     }
   }
 
-  // Do_compute with given primitive & src zero point
-  // Bias scale has been applied before passed in.
+  // Do_compute with given primitive
   template <bool with_bias>
-  static void do_compute(const super::primitive_desc& pd,
-                         const super& primitive,
-                         const tensor& src,
-                         const tensor& weights,
+  static void do_compute(const convolution_forward_fast_params& fast_params,
+                         const tensor& expected_src,
+                         const tensor& expected_weights,
                          const tensor& expected_bias,
-                         tensor& dst,
-                         const tensor& src_zero_point,
+                         tensor& expected_dst,
                          int groups) {
-    auto scratchpad = tensor(pd.scratchpad_desc());
-    auto weights_grouped = weights.make_grouped_weights(groups);
+    auto scratchpad = tensor(fast_params._pd.scratchpad_desc());
+    auto weights_grouped = expected_weights.make_grouped_weights(groups);
     if (with_bias) {
-      primitive.execute(stream::default_stream(),
-                        {{DNNL_ARG_SRC, src},
+      fast_params._primitive.execute(stream::default_stream(),
+                        {{DNNL_ARG_SRC, expected_src},
                          {DNNL_ARG_WEIGHTS, weights_grouped},
                          {DNNL_ARG_BIAS, expected_bias},
-                         {DNNL_ARG_DST, dst},
-                         {DNNL_ARG_SCRATCHPAD, scratchpad},
-                         {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_SRC, src_zero_point}});
+                         {DNNL_ARG_DST, expected_dst},
+                         {DNNL_ARG_SCRATCHPAD, scratchpad}});
     } else {
-      primitive.execute(stream::default_stream(),
-                        {{DNNL_ARG_SRC, src},
+      fast_params._primitive.execute(stream::default_stream(),
+                        {{DNNL_ARG_SRC, expected_src},
                          {DNNL_ARG_WEIGHTS, weights_grouped},
-                         {DNNL_ARG_DST, dst},
-                         {DNNL_ARG_SCRATCHPAD, scratchpad},
-                         {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_SRC, src_zero_point}});
+                         {DNNL_ARG_DST, expected_dst},
+                         {DNNL_ARG_SCRATCHPAD, scratchpad}});
     }
   }
 
   // Do_compute with given primitive & src zero point
   // Bias scale has been applied before passed in.
   template <bool with_bias>
-  static void do_compute(const super::primitive_desc& pd,
-                         const super& primitive,
-                         const tensor& src,
-                         const tensor& weights,
+  static void do_compute(const convolution_forward_fast_params& fast_params,
+                         const tensor& expected_src,
+                         const tensor& expected_weights,
                          const tensor& expected_bias,
-                         tensor& dst,
+                         tensor& expected_dst,
+                         const tensor& src_zero_point,
                          int groups) {
-    auto scratchpad = tensor(pd.scratchpad_desc());
-    auto weights_grouped = weights.make_grouped_weights(groups);
+    auto scratchpad = tensor(fast_params._pd.scratchpad_desc());
+    auto weights_grouped = expected_weights.make_grouped_weights(groups);
     if (with_bias) {
-      primitive.execute(stream::default_stream(),
-                        {{DNNL_ARG_SRC, src},
+      fast_params._primitive.execute(stream::default_stream(),
+                        {{DNNL_ARG_SRC, expected_src},
                          {DNNL_ARG_WEIGHTS, weights_grouped},
                          {DNNL_ARG_BIAS, expected_bias},
-                         {DNNL_ARG_DST, dst},
-                         {DNNL_ARG_SCRATCHPAD, scratchpad}});
+                         {DNNL_ARG_DST, expected_dst},
+                         {DNNL_ARG_SCRATCHPAD, scratchpad},
+                         {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_SRC, src_zero_point}});
     } else {
-      primitive.execute(stream::default_stream(),
-                        {{DNNL_ARG_SRC, src},
+      fast_params._primitive.execute(stream::default_stream(),
+                        {{DNNL_ARG_SRC, expected_src},
                          {DNNL_ARG_WEIGHTS, weights_grouped},
-                         {DNNL_ARG_DST, dst},
-                         {DNNL_ARG_SCRATCHPAD, scratchpad}});
+                         {DNNL_ARG_DST, expected_dst},
+                         {DNNL_ARG_SCRATCHPAD, scratchpad},
+                         {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_SRC, src_zero_point}});
     }
   }
 };
