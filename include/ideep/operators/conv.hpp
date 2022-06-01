@@ -393,6 +393,23 @@ struct convolution_forward
     }
   }
 
+  // Compute with given primitive with or without bias
+  static void compute(const super::primitive_desc pd,
+                      const super& primitive,
+                      const tensor& src,
+                      const tensor& weights,
+                      const tensor& expected_bias,
+                      tensor& dst,
+                      int groups) {
+    if (expected_bias.is_empty()) {
+      do_compute</*with_bias=*/false>(
+          pd, primitive, src, weights, expected_bias, dst, groups);
+    } else {
+      do_compute</*with_bias=*/true>(
+          pd, primitive, src, weights, expected_bias, dst, groups);
+    }
+  }
+
   // Deprecated. 2-in-1 compute (prepare & compute) with bias
   // Zero points are set to tensor for quantization
   template <bool plain_format = false>
@@ -838,6 +855,34 @@ private:
                          {DNNL_ARG_DST, dst},
                          {DNNL_ARG_SCRATCHPAD, scratchpad},
                          {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_SRC, src_zero_point}});
+    }
+  }
+
+  // Do_compute with given primitive & src zero point
+  // Bias scale has been applied before passed in.
+  template <bool with_bias>
+  static void do_compute(const super::primitive_desc& pd,
+                         const super& primitive,
+                         const tensor& src,
+                         const tensor& weights,
+                         const tensor& expected_bias,
+                         tensor& dst,
+                         int groups) {
+    auto scratchpad = tensor(pd.scratchpad_desc());
+    auto weights_grouped = weights.make_grouped_weights(groups);
+    if (with_bias) {
+      primitive.execute(stream::default_stream(),
+                        {{DNNL_ARG_SRC, src},
+                         {DNNL_ARG_WEIGHTS, weights_grouped},
+                         {DNNL_ARG_BIAS, expected_bias},
+                         {DNNL_ARG_DST, dst},
+                         {DNNL_ARG_SCRATCHPAD, scratchpad}});
+    } else {
+      primitive.execute(stream::default_stream(),
+                        {{DNNL_ARG_SRC, src},
+                         {DNNL_ARG_WEIGHTS, weights_grouped},
+                         {DNNL_ARG_DST, dst},
+                         {DNNL_ARG_SCRATCHPAD, scratchpad}});
     }
   }
 };
