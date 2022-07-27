@@ -11,7 +11,12 @@ using post_ops = dnnl::post_ops;
 /// Attribute class for extra information into computations
 struct attr_t : public dnnl::primitive_attr {
   attr_t() {}
-
+  void set_fpmath_mode() {
+    error::wrap_c_api(
+        dnnl_primitive_attr_set_fpmath_mode(
+            get(), ideep::utils::get_fpmath_mode()),
+        "could not set fpmath mode primitive attribute");
+  }
   attr_t(int mask, const scale_t& scales) {
     set_output_scales(mask, scales);
   }
@@ -231,6 +236,18 @@ struct attr_t : public dnnl::primitive_attr {
     return attr;
   }
 
+  static attr_t fuse_hardsigmoid() {
+    constexpr float scale = 1.0f;
+    constexpr float alpha = 1.0f / 6.0f;
+    constexpr float beta = 1.0f / 2.0f;
+
+    attr_t attr;
+    post_ops po;
+    po.append_eltwise(scale, algorithm::eltwise_hardsigmoid, alpha, beta);
+    attr.set_post_ops(po);
+    return attr;
+  }
+
   static attr_t attr_post_ops(post_ops po) {
     attr_t attr;
     attr.set_post_ops(po);
@@ -285,6 +302,29 @@ struct attr_t : public dnnl::primitive_attr {
         std::get<4>(params) != algorithm::eltwise_relu)
       return false;
 
+    return true;
+  }
+
+  bool operator==(const attr_t& rhs) const {
+    auto l_po = get_post_ops();
+    auto r_po = rhs.get_post_ops();
+    if (l_po.len() != r_po.len() ||
+        get_output_scales() != rhs.get_output_scales()) {
+      return false;
+    }
+    for (auto index = 0; index < l_po.len(); index++) {
+      kind l_akind, r_akind;
+      algorithm l_alg, r_alg;
+      float l_scale = 1.0, l_alpha = 1.0, l_beta = 0.0;
+      float r_scale = 1.0, r_alpha = 1.0, r_beta = 0.0;
+      std::tie(l_akind, l_scale, l_alpha, l_beta, l_alg) = get_params(index);
+      std::tie(r_akind, r_scale, r_alpha, r_beta, r_alg) =
+          rhs.get_params(index);
+      if (l_akind != r_akind || l_alg != r_alg || l_scale != r_scale ||
+          l_alpha != r_alpha || l_beta != r_beta) {
+        return false;
+      }
+    }
     return true;
   }
 
