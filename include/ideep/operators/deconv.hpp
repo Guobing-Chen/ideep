@@ -398,8 +398,9 @@ struct convolution_transpose_forward : public dnnl::deconvolution_forward {
         src_zero_point, dst_zero_point, attr, aalgorithm, aprop_kind, alowp_kind, aengine);
   }
 
+  template <bool is_channels_last = false>
   static tensor::desc expected_weights_desc(
-      const dims& weights_dims,   // [i, o, ...]
+      const dims& weights_dims, // [i, o, ...]
       data_type dtype = data_type::f32,
       const dims& strides = {1, 1},
       const dims& padding_l = {0, 0},
@@ -469,6 +470,11 @@ struct convolution_transpose_forward : public dnnl::deconvolution_forward {
     tensor::desc src_desc(x_dims, x_dtype);
     tensor::desc dst_desc(y_dims, y_dtype);
 
+    if (is_channels_last) {
+      src_desc = src_desc.to_format(5 == src_size ? tag::ndhwc : tag::nhwc);
+      dst_desc = dst_desc.to_format(5 == src_size ? tag::ndhwc : tag::nhwc);
+    }
+
     auto pd = get_primitive_desc</*with_bias=*/false>(
         src_desc, weights_desc, tensor::desc(), dst_desc, strides, dilates_,
         padding_l, padding_r, attr, aalgorithm, aprop_kind);
@@ -499,8 +505,10 @@ struct convolution_transpose_forward : public dnnl::deconvolution_forward {
       const engine& aengine = engine::cpu_engine()) {
     // For nhwc path, weight uses format_tag::any,
     // while activation uses format_tag::nhwc
-    bool is_nhwc = src_desc.is_nhwc();
-    bool is_ndhwc = src_desc.is_ndhwc();
+    bool is_nhwc = src_desc.is_nhwc() || weights_desc.is_nhwc();
+    bool is_ndhwc = src_desc.is_ndhwc() || weights_desc.is_ndhwc();
+    // bool is_nhwc = src_desc.is_nhwc();
+    // bool is_ndhwc = src_desc.is_ndhwc();
     auto format_tag = is_nhwc ? tag::nhwc : (is_ndhwc ? tag::ndhwc : tag::any);
     auto src_desc_query = src_desc.to_format(format_tag);
     auto weights_desc_query = weights_desc.to_format_any();
@@ -863,24 +871,36 @@ private:
     // embed group info into diff_weights_desc
     auto expected_diff_weights_desc =
         tensor::desc(pd.diff_weights_desc(), groups);
-    diff_weights.reinit_if_possible(expected_diff_weights_desc);
+    tensor expected_diff_weights;
+    // diff_weights not init in FW or has same desc with expected desc.
+    if (diff_weights.is_empty() ||
+        diff_weights.get_desc() == expected_diff_weights_desc) {
+      diff_weights.reinit_if_possible(expected_diff_weights_desc);
+      expected_diff_weights = diff_weights;
+    } else {
+      expected_diff_weights.init(expected_diff_weights_desc);
+    }
     tensor scratchpad(pd.scratchpad_desc());
 
     if (with_diff_bias) {
       diff_bias.reinit_if_possible(pd.diff_bias_desc());
-      super(pd).execute(stream::default_stream(),
-                        {{DNNL_ARG_DIFF_DST, expected_diff_dst},
-                         {DNNL_ARG_SRC, expected_src},
-                         {DNNL_ARG_DIFF_WEIGHTS, diff_weights},
-                         {DNNL_ARG_DIFF_BIAS, diff_bias},
-                         {DNNL_ARG_SCRATCHPAD, scratchpad}});
+      super(pd).execute(
+          stream::default_stream(),
+          {{DNNL_ARG_DIFF_DST, expected_diff_dst},
+           {DNNL_ARG_SRC, expected_src},
+           {DNNL_ARG_DIFF_WEIGHTS, expected_diff_weights},
+           {DNNL_ARG_DIFF_BIAS, diff_bias},
+           {DNNL_ARG_SCRATCHPAD, scratchpad}});
     } else {
-      super(pd).execute(stream::default_stream(),
-                        {{DNNL_ARG_DIFF_DST, expected_diff_dst},
-                         {DNNL_ARG_SRC, expected_src},
-                         {DNNL_ARG_DIFF_WEIGHTS, diff_weights},
-                         {DNNL_ARG_SCRATCHPAD, scratchpad}});
+      super(pd).execute(
+          stream::default_stream(),
+          {{DNNL_ARG_DIFF_DST, expected_diff_dst},
+           {DNNL_ARG_SRC, expected_src},
+           {DNNL_ARG_DIFF_WEIGHTS, expected_diff_weights},
+           {DNNL_ARG_SCRATCHPAD, scratchpad}});
     }
+
+    diff_weights.feed_from(expected_diff_weights, /*is_deconv_weights=*/true);
 
     // recover output dims to align with pytorch
     if (groups > 1) {
