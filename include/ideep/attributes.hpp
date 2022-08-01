@@ -11,14 +11,16 @@ using post_ops = dnnl::post_ops;
 /// Attribute class for extra information into computations
 struct attr_t : public dnnl::primitive_attr {
   attr_t() {}
+
+  attr_t(int mask, const scale_t& scales) {
+    set_output_scales(mask, scales);
+  }
+
   void set_fpmath_mode() {
     error::wrap_c_api(
         dnnl_primitive_attr_set_fpmath_mode(
             get(), ideep::utils::get_fpmath_mode()),
         "could not set fpmath mode primitive attribute");
-  }
-  attr_t(int mask, const scale_t& scales) {
-    set_output_scales(mask, scales);
   }
 
   std::pair<scale_t, int> get_output_scales() const {
@@ -303,6 +305,18 @@ struct attr_t : public dnnl::primitive_attr {
       return false;
 
     return true;
+  }
+
+  attr_t& operator=(const attr_t& rhs) {
+    if (this == &rhs) {
+      return *this;
+    }
+    dnnl_primitive_attr_t result;
+    error::wrap_c_api(
+        dnnl_primitive_attr_clone(&result, rhs.get()),
+        "could not clone primitive attributes");
+    this->reset(result);
+    return *this;
   }
 
   bool operator==(const attr_t& rhs) const {

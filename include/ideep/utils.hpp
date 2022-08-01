@@ -28,7 +28,7 @@
 #endif
 
 namespace ideep {
-extern dnnl_fpmath_mode_t fpmath_mode;
+static dnnl_fpmath_mode_t fpmath_mode = dnnl_fpmath_mode_strict;
 namespace utils {
 
 static void bernoulli_generate(const long n, const double p, int* r) {
