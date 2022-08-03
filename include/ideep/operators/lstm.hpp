@@ -22,6 +22,7 @@ struct lstm_forward_inference : public dnnl::lstm_forward {
       const int32_t zp = -1,
       const int weights_scale_mask = -1,
       const std::vector<float>& weights_scales = scale_t(),
+      const attr_t& attr = attr_t(),
       const engine& aengine = engine::cpu_engine()) {
     auto direction = reverse ? rnn_direction::unidirectional_right2left
                              : rnn_direction::unidirectional_left2right;
@@ -34,7 +35,7 @@ struct lstm_forward_inference : public dnnl::lstm_forward {
     auto weights_layer_desc = weights_layer.get_desc().to_format_any();
     auto weights_iter_desc = weights_iter.get_desc().to_format_any();
 
-    attr_t op_attr;
+    attr_t op_attr = attr;
     if (src_layer.get_data_type() == data_type::u8) {
       weights_layer_desc = weights_layer_desc.to_type(data_type::s8);
       weights_iter_desc = weights_iter_desc.to_type(data_type::s8);
@@ -160,6 +161,7 @@ struct lstm_forward_training : public dnnl::lstm_forward {
       tensor& dst_iter,
       tensor& dst_iter_c,
       const bool reverse = false,
+      const attr_t& attr = attr_t(),
       const engine& aengine = engine::cpu_engine()) {
     auto direction = reverse ? rnn_direction::unidirectional_right2left
                              : rnn_direction::unidirectional_left2right;
@@ -177,7 +179,7 @@ struct lstm_forward_training : public dnnl::lstm_forward {
     auto weights_iter_desc = weights_iter.get_desc().to_format_any();
 
     // Use user mode scratchpad
-    auto op_attr = dnnl::primitive_attr();
+    auto op_attr = attr;
     op_attr.set_scratchpad_mode(dnnl::scratchpad_mode::user);
 
     auto pd = primitive_desc(
@@ -308,6 +310,7 @@ struct lstm_backward : public dnnl::lstm_backward {
       tensor& diff_weights_iter,
       tensor& diff_bias,
       const bool reverse = false,
+      const attr_t& attr = attr_t(),
       const engine& aengine = engine::cpu_engine()) {
     auto aprop = prop_kind::backward;
     auto direction = reverse ? rnn_direction::unidirectional_right2left
@@ -337,7 +340,7 @@ struct lstm_backward : public dnnl::lstm_backward {
     auto diff_dst_iter_c_desc = dst_iter_c_desc.to_type(data_type::f32);
 
     // Use user mode scratchpad
-    auto op_attr = dnnl::primitive_attr();
+    auto op_attr = attr;
     op_attr.set_scratchpad_mode(dnnl::scratchpad_mode::user);
 
     auto pd = primitive_desc(
