@@ -39,8 +39,8 @@ struct deconv_forward_params {
 
   dnnl::deconvolution_forward::primitive_desc pd;
   dnnl::deconvolution_forward primitive;
-  attr_t bias_attr;
   int groups;
+  attr_t bias_attr;
   // Param for static quantization
   std::shared_ptr<deconv_forward_quant_params> sq_param_ptr;
 };
