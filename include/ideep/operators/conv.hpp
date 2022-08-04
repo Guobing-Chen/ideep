@@ -20,9 +20,11 @@ struct convolution_forward_params {
   convolution_forward_params(
       dnnl::convolution_forward::primitive_desc&& pd,
       dnnl::convolution_forward&& primitive,
+      attr_t&& op_attr,
       int groups)
       : pd(std::move(pd)),
         primitive(std::move(primitive)),
+        op_attr(op_attr),
         groups(groups),
         bias_attr(attr_t()),
         pd_use_threads(omp_get_max_threads()) {}
@@ -30,16 +32,19 @@ struct convolution_forward_params {
   convolution_forward_params(
       dnnl::convolution_forward::primitive_desc&& pd,
       dnnl::convolution_forward&& primitive,
+      attr_t&& op_attr,
       int groups,
       attr_t&& bias_attr)
       : pd(std::move(pd)),
         primitive(std::move(primitive)),
+        op_attr(op_attr),
         groups(groups),
         bias_attr(std::move(bias_attr)),
         pd_use_threads(omp_get_max_threads()) {}
 
   dnnl::convolution_forward::primitive_desc pd;
   dnnl::convolution_forward primitive;
+  attr_t op_attr;
   int groups;
   attr_t bias_attr;
   // From IPEX. Set in `do_prepare()`, only used outside ideep.
@@ -1597,7 +1602,7 @@ struct convolution_forward
         aengine);
     dnnl::convolution_forward primitive(pd);
     convolution_forward_params params(
-        std::move(pd), std::move(primitive), groups);
+        std::move(pd), std::move(primitive), std::move(op_attr), groups);
     do_compute<with_bias, reorder_src, reorder_weight>(
         params, src, weights, bias, dst);
   }
@@ -1682,7 +1687,11 @@ struct convolution_forward
         ideep::engine(pd.get_engine().get_kind()),
         src_zp_tensor);
     convolution_forward_params params(
-        std::move(pd), std::move(primitive), groups, std::move(bias_attr));
+        std::move(pd),
+        std::move(primitive),
+        std::move(op_attr),
+        groups,
+        std::move(bias_attr));
     params.sq_param_ptr = std::make_shared<convolution_forward_quant_params>(
         std::move(src_zp_tensor));
     IDEEP_ENFORCE(
@@ -1797,7 +1806,7 @@ struct convolution_forward
 
     dnnl::convolution_forward primitive(pd);
 
-    param = {std::move(pd), std::move(primitive), groups};
+    param = {std::move(pd), std::move(primitive), std::move(op_attr), groups};
   }
 
   // for int8
@@ -1882,7 +1891,12 @@ struct convolution_forward
         ideep::engine(pd.get_engine().get_kind()),
         src_zp_tensor);
 
-    param = {std::move(pd), std::move(primitive), groups, std::move(bias_attr)};
+    param = {
+        std::move(pd),
+        std::move(primitive),
+        std::move(op_attr),
+        groups,
+        std::move(bias_attr)};
     param.sq_param_ptr = std::make_shared<convolution_forward_quant_params>(
         std::move(src_zp_tensor));
   }

@@ -926,9 +926,8 @@ struct matmul_forward : public dnnl::matmul,
     auto x_dims = weights_dims;
     x_dims[ndims - 2] = 1;
     x_dims[ndims - 1] = weights_dims[ndims - 2];
-    auto y_dims = {x_dims[0], weights_dims[1]};
-    if (ndims == 3)
-      y_dims = {x_dims[0], x_dims[1], weights_dims[2]};
+    dims y_dims = (ndims == 3) ? dims({x_dims[0], x_dims[1], weights_dims[2]})
+                               : dims({x_dims[0], weights_dims[1]});
     auto y_dtype = (dtype != data_type::s8) ? dtype : data_type::s32;
 
     IDEEP_ENFORCE(
@@ -1600,7 +1599,8 @@ struct matmul_forward : public dnnl::matmul,
 
     // Prepare tensor of src scales
     auto src_scale_size = src_scales_in.size();
-    tensor::desc src_scales_desc = {{src_scale_size}, data_type::f32, dims(1, 1)};
+    tensor::desc src_scales_desc = {
+        {src_scale_size}, data_type::f32, dims(1, 1)};
     tensor src_scales_m(
         src_scales_desc,
         reinterpret_cast<float*>(src_scales_in.data()),

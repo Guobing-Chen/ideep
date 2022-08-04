@@ -16,6 +16,10 @@ struct attr_t : public dnnl::primitive_attr {
     set_output_scales(mask, scales);
   }
 
+  attr_t(const attr_t& other) : dnnl::primitive_attr(other) {
+    *this = other;
+  }
+
   std::pair<scale_t, int> get_output_scales() const {
     dnnl_dim_t count;
     int c_mask;
@@ -219,6 +223,18 @@ struct attr_t : public dnnl::primitive_attr {
     attr_t attr;
     post_ops po;
     po.append_eltwise(scale, algorithm::eltwise_pow, alpha, beta);
+    attr.set_post_ops(po);
+    return attr;
+  }
+
+  static attr_t fuse_hardsigmoid() {
+    constexpr float scale = 1.0f;
+    constexpr float alpha = 1.0f / 6.0f;
+    constexpr float beta = 1.0f / 2.0f;
+
+    attr_t attr;
+    post_ops po;
+    po.append_eltwise(scale, algorithm::eltwise_hardsigmoid, alpha, beta);
     attr.set_post_ops(po);
     return attr;
   }
