@@ -24,10 +24,11 @@ struct attr_t : public dnnl::primitive_attr {
     set_fpmath_mode(mode);
   }
 
-  void set_fpmath_mode(dnnl_fpmath_mode_t mode) {
+  attr_t& set_fpmath_mode(dnnl_fpmath_mode_t mode) {
     error::wrap_c_api(
         dnnl_primitive_attr_set_fpmath_mode(get(), mode),
         "could not set fpmath mode primitive attribute");
+    return *this;
   }
 
   std::pair<scale_t, int> get_output_scales() const {
