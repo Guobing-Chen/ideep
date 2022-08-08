@@ -42,6 +42,13 @@ struct attr_t : public dnnl::primitive_attr {
     return std::make_pair(scale_t(c_scales, c_scales + count), c_mask);
   }
 
+  std::pair<zero_point_t, int> get_zero_points(int arg) const {
+    int mask;
+    zero_point_t zero_points;
+    get_zero_points(arg, mask, zero_points);
+    return std::make_pair(zero_points, mask);
+  }
+
   // Helper factory
   static attr_t fuse_sum(float scale = 1.0) {
     attr_t attr;
@@ -319,7 +326,14 @@ struct attr_t : public dnnl::primitive_attr {
     auto l_po = get_post_ops();
     auto r_po = rhs.get_post_ops();
     if (l_po.len() != r_po.len() ||
-        get_output_scales() != rhs.get_output_scales()) {
+        get_output_scales() != rhs.get_output_scales() ||
+        get_fpmath_mode() != rhs.get_fpmath_mode() ||
+        get_scratchpad_mode() != rhs.get_scratchpad_mode()) {
+      return false;
+    }
+    if (get_zero_points(DNNL_ARG_SRC) != rhs.get_zero_points(DNNL_ARG_SRC) ||
+        get_zero_points(DNNL_ARG_WEIGHTS) != rhs.get_zero_points(DNNL_ARG_WEIGHTS) ||
+        get_zero_points(DNNL_ARG_DST) != rhs.get_zero_points(DNNL_ARG_DST)) {
       return false;
     }
     for (auto index = 0; index < l_po.len(); index++) {
