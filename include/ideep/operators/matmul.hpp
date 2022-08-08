@@ -965,7 +965,8 @@ struct matmul_forward : public dnnl::matmul,
     // Prepare tensor of weight zero point
     static auto wei_zero_point = zero_point_t(1);
     const dim wei_zero_point_size = 1;
-    tensor::desc wei_zero_point_desc = {{wei_zero_point_size}, data_type::s32, dims(1, 1)};
+    const dim wei_zero_point_stride = 1;
+    tensor::desc wei_zero_point_desc = {{wei_zero_point_size}, data_type::s32, {wei_zero_point_stride}};
     tensor wei_zero_point_m(wei_zero_point_desc, reinterpret_cast<int*>(wei_zero_point.data()), aengine);
 
     // Post-ops
@@ -1210,7 +1211,8 @@ struct matmul_forward : public dnnl::matmul,
                         : (src_scales.empty() ? IDEEP_DEF_SCALE : src_scales);
     auto& dst_scales_in = IDEEP_DEF_SCALE;
 
-    tensor::desc scales_desc = {{scale_size}, data_type::f32, dims(1, 1)};
+    const dim scale_zp_stride = 1;
+    tensor::desc scales_desc = {{scale_size}, data_type::f32, {scale_zp_stride}};
     tensor scales_m(scales_desc, aengine);
     auto s = reinterpret_cast<float *>(scales_m.get_data_handle());
     for (memory::dim i = 0; i < scale_size; ++i) {
@@ -1219,7 +1221,7 @@ struct matmul_forward : public dnnl::matmul,
 
     // Prepare tensor of src scales
     auto src_scale_size = src_scales_in.size();
-    tensor::desc src_scales_desc = {{src_scale_size}, data_type::f32, dims(1, 1)};
+    tensor::desc src_scales_desc = {{src_scale_size}, data_type::f32, {scale_zp_stride}};
     tensor src_scales_m(src_scales_desc, reinterpret_cast<float*>(src_scales_in.data()), aengine);
 
     // Prepare tensor of src zero point
@@ -1228,7 +1230,7 @@ struct matmul_forward : public dnnl::matmul,
     const auto src_zero_point_size = static_cast<dim>(src_zero_point.size());
     IDEEP_ENFORCE(src_zero_point_size == 1,
                   "DNNL only support 1-dim zero_point");
-    tensor::desc src_zero_point_desc = {{src_zero_point_size}, data_type::s32, dims(1, 1)};
+    tensor::desc src_zero_point_desc = {{src_zero_point_size}, data_type::s32, {scale_zp_stride}};
     tensor src_zero_point_m(src_zero_point_desc, reinterpret_cast<int32_t*>(src_zero_point.data()), aengine);
 
     // Reroder src (f32 -> u8)

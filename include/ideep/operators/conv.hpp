@@ -1502,6 +1502,11 @@ struct convolution_backward_data : public dnnl::convolution_backward_data {
                        {DNNL_ARG_WEIGHTS, expected_weights},
                        {DNNL_ARG_DIFF_SRC, expected_diff_src},
                        {DNNL_ARG_SCRATCHPAD, scratchpad}});
+    // diff_src has been init in FW side, but has diff desc with
+    // expected_diff_src.
+    if (diff_src.get_desc() != expected_diff_src_desc) {
+      diff_src.feed_from(expected_diff_src);
+    }
   }
 };
 
