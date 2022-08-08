@@ -271,7 +271,7 @@ struct inner_product_forward
     });
   };
 
- private:
+private:
   template <bool with_bias, bool reorder_src = true, bool reorder_weight = true>
   static void compute_impl(const tensor &src,
                            const tensor &weights,
@@ -643,7 +643,7 @@ struct inner_product_backward_weights
         src, diff_dst, diff_weights, dummy_diff_bias, diff_weight_type, attr);
   }
 
- private:
+private:
   template<bool with_diff_bias = true>
   static void compute_impl(const tensor& src,
                            const tensor& diff_dst,
@@ -708,7 +708,7 @@ struct inner_product_backward_weights
     }
 
     super(pd).execute(stream::default_stream(), args);
-    // reorder back to diff_weights's buffer if needed
+      // reorder back to diff_weights's buffer if needed
     if (diff_weights.is_empty() ||
          diff_weights.get_desc() == expected_diff_weights.get_desc() ||
          !diff_weights.get_desc().has_same_shape_as(expected_diff_weights.get_desc())){

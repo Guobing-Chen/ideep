@@ -6,7 +6,7 @@ struct convolution_forward_quant_params {
   convolution_forward_quant_params() {}
 
   convolution_forward_quant_params(tensor&& src_zero_point)
-      : src_zero_point(std::move(src_zero_point)) {}
+                                  : src_zero_point(std::move(src_zero_point)) {}
 
   // Due to oneDNN's mechanism of conv, zero point is set to
   // runtime value when weight is prepacked without input info in framework.
@@ -117,8 +117,8 @@ struct conv_deconv_utils {
 
       // fill primitive attr
       dst_scales_in = dst_scales.empty() || dst_data_type == data_type::f32
-          ? IDEEP_DEF_SCALE
-          : dst_scales;
+                          ? IDEEP_DEF_SCALE
+                          : dst_scales;
       const auto default_zero_point = zero_point_t(1);
       const auto& src_zero_point = src.has_zero_point() ? src.get_zero_point() :
                                    src_zero_points.empty() ? default_zero_point : src_zero_points;
@@ -198,7 +198,7 @@ struct conv_deconv_utils {
 
       // align weights data type with src
       dst_data_type = src.get_data_type() == data_type::bf16 ? data_type::bf16
-                                                             : data_type::f32;
+                                                              : data_type::f32;
       src_desc = src.get_desc().to_type(dst_data_type);
       weights_desc = weight_grouped.get_desc().to_type(dst_data_type);
 
@@ -213,8 +213,8 @@ struct conv_deconv_utils {
     op_attr.set_scratchpad_mode(dnnl::scratchpad_mode::user);
 
     dst_desc = attr.has_op_kind(kind::sum)
-        ? dst.get_desc()
-        : tensor::desc(dst_dims, dst_data_type);
+                    ? dst.get_desc()
+                    : tensor::desc(dst_dims, dst_data_type);
   }
 
   // Common logic to prepare parameters for conv/deconv.
@@ -267,8 +267,8 @@ struct conv_deconv_utils {
     op_attr.set_scratchpad_mode(dnnl::scratchpad_mode::user);
 
     dst_desc = attr.has_op_kind(kind::sum)
-        ? dst.get_desc()
-        : tensor::desc(dst_dims, dst_data_type);
+                    ? dst.get_desc()
+                    : tensor::desc(dst_dims, dst_data_type);
   }
 
   /// Get true zero point from input tensor, specified zero point or op attr
@@ -404,7 +404,7 @@ struct convolution_forward
                       const lowp_kind alowp_kind = u8s8,
                       const engine& aengine = engine::cpu_engine()) {
     if (bias.is_empty()) {
-compute_dispatch</*with_bias=*/false, reorder_src, reorder_weight>(
+      compute_dispatch</*with_bias=*/false, reorder_src, reorder_weight>(
           src, weights, bias, dst_dims, dst, strides, dilates,
           padding_l, padding_r, groups, src_scales, weights_scales, dst_scales,
           src_zero_point, dst_zero_point, attr, aalgorithm, aprop_kind, alowp_kind, aengine);
@@ -1104,7 +1104,7 @@ compute_dispatch</*with_bias=*/false, reorder_src, reorder_weight>(
     });
   }
 
- private:
+private:
   static bool use_gemm(const dims& src, const dims& weight, const dims& dst,
                        int groups) {
     if (groups != 1)
@@ -1206,7 +1206,7 @@ compute_dispatch</*with_bias=*/false, reorder_src, reorder_weight>(
         padding_l, padding_r, op_attr, aalgorithm, aprop_kind, aengine);
     dnnl::convolution_forward primitive(pd);
     conv_deconv_utils::obtain_runtime_zero_point(
-        src, src_zero_point, DNNL_ARG_SRC, pd.get_primitive_attr(),
+      src, src_zero_point, DNNL_ARG_SRC, pd.get_primitive_attr(),
       ideep::engine(pd.get_engine().get_kind()), src_zp_tensor);
     convolution_forward_params params(
         std::move(pd), std::move(primitive), std::move(op_attr), groups, std::move(bias_attr));
@@ -1467,7 +1467,7 @@ struct convolution_backward_data : public dnnl::convolution_backward_data {
     auto weights_desc =
         weights_.get_desc().to_format_any().to_type(diff_dst.get_data_type());
 
-    auto diff_src_desc =
+    auto diff_src_desc = 
         tensor::desc(diff_src_dims, diff_dst_desc.get_data_type(), format_tag);
 
     auto op_attr = attr;
@@ -1574,7 +1574,7 @@ struct convolution_backward_weights
     auto diff_weights_desc =
         tensor::desc(diff_weights_dims, diff_weight_type_in, tag::any);
     if (groups > 1) {
-      diff_weights_desc = diff_weights_desc.to_grouped(groups).to_format_any();
+        diff_weights_desc = diff_weights_desc.to_grouped(groups).to_format_any();
     }
 
     bool channels_last = diff_dst.get_desc().is_channels_last();
@@ -1584,7 +1584,7 @@ struct convolution_backward_weights
     auto diff_dst_desc = diff_dst.get_desc().to_format(format_tag);
     auto src_desc = src.get_desc().to_format(format_tag);
 
-    auto diff_bias_desc =
+    auto diff_bias_desc =     
         tensor::desc({diff_dst.get_dim(1)}, diff_weight_type_in, tag::any);
 
     // for forward hint, weights_desc should have same data_type
@@ -1631,16 +1631,16 @@ struct convolution_backward_weights
       diff_bias.reinit_if_possible(pd.diff_bias_desc());
       super(pd).execute(stream::default_stream(),
                         {{DNNL_ARG_DIFF_DST, expected_diff_dst},
-                        {DNNL_ARG_SRC, expected_src},
-                        {DNNL_ARG_DIFF_WEIGHTS, expected_diff_weights},
-                        {DNNL_ARG_DIFF_BIAS, diff_bias},
-                        {DNNL_ARG_SCRATCHPAD, scratchpad}});
+                         {DNNL_ARG_SRC, expected_src},
+                         {DNNL_ARG_DIFF_WEIGHTS, expected_diff_weights},
+                         {DNNL_ARG_DIFF_BIAS, diff_bias},
+                         {DNNL_ARG_SCRATCHPAD, scratchpad}});
     } else {
       super(pd).execute(stream::default_stream(),
                         {{DNNL_ARG_DIFF_DST, expected_diff_dst},
-                        {DNNL_ARG_SRC, expected_src},
-                        {DNNL_ARG_DIFF_WEIGHTS, expected_diff_weights},
-                        {DNNL_ARG_SCRATCHPAD, scratchpad}});
+                         {DNNL_ARG_SRC, expected_src},
+                         {DNNL_ARG_DIFF_WEIGHTS, expected_diff_weights},
+                         {DNNL_ARG_SCRATCHPAD, scratchpad}});
     }
     // diff_weights has been init in FW side, but has diff desc with
     // expected_diff_weights.

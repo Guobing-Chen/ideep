@@ -441,7 +441,7 @@ struct convolution_transpose_forward : public dnnl::deconvolution_forward {
       y_dims.push_back(1);
       y_dims.push_back(oc);
       auto valid_x_dim = [=](int idx) {
-        return std::max((padding_l[idx] + padding_r[idx] - (1 + (kernel_size[idx] - 1) * dilates[idx])) / strides[idx] + 2,
+          return std::max((padding_l[idx] + padding_r[idx] - (1 + (kernel_size[idx] - 1) * dilates[idx])) / strides[idx] + 2,
                           2 * kernel_size[idx]);
       };
       if (4 == src_size) {
@@ -486,7 +486,7 @@ struct convolution_transpose_forward : public dnnl::deconvolution_forward {
     } else {
       // [o, i, ...] -> [i, o, ...]
       return tensor::desc(pd.weights_desc(), groups).transpose(0, 1);
-    }
+    } 
   }
 
   template <bool with_bias>
@@ -698,18 +698,18 @@ struct convolution_transpose_forward : public dnnl::deconvolution_forward {
           bias;
       primitive.execute(stream::default_stream(),
                         {{DNNL_ARG_SRC, expected_src},
-                        {DNNL_ARG_WEIGHTS, expected_weights},
-                        {DNNL_ARG_BIAS, expected_bias},
-                        {DNNL_ARG_DST, dst},
-                        {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_SRC, src_zero_point},
-                        {DNNL_ARG_SCRATCHPAD, scratchpad}});
+                         {DNNL_ARG_WEIGHTS, expected_weights},
+                         {DNNL_ARG_BIAS, expected_bias},
+                         {DNNL_ARG_DST, dst},
+                         {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_SRC, src_zero_point},
+                         {DNNL_ARG_SCRATCHPAD, scratchpad}});
     } else {
       primitive.execute(stream::default_stream(),
                         {{DNNL_ARG_SRC, expected_src},
-                        {DNNL_ARG_WEIGHTS, expected_weights},
-                        {DNNL_ARG_DST, dst},
-                        {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_SRC, src_zero_point},
-                        {DNNL_ARG_SCRATCHPAD, scratchpad}});
+                         {DNNL_ARG_WEIGHTS, expected_weights},
+                         {DNNL_ARG_DST, dst},
+                         {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_SRC, src_zero_point},
+                         {DNNL_ARG_SCRATCHPAD, scratchpad}});
     }
   }
 
@@ -761,11 +761,11 @@ struct convolution_transpose_backward_data
     diff_src.reinit_if_possible(pd.diff_src_desc());
     tensor scratchpad(pd.scratchpad_desc());
 
-    super(pd).execute(stream::default_stream(),
+    super(pd).execute(stream::default_stream(), 
                       {{DNNL_ARG_DIFF_DST, expected_diff_dst},
-                      {DNNL_ARG_WEIGHTS, expected_weights},
-                      {DNNL_ARG_DIFF_SRC, diff_src},
-                      {DNNL_ARG_SCRATCHPAD, scratchpad}});
+                       {DNNL_ARG_WEIGHTS, expected_weights},
+                       {DNNL_ARG_DIFF_SRC, diff_src},
+                       {DNNL_ARG_SCRATCHPAD, scratchpad}});
   }
 };
 
@@ -787,9 +787,9 @@ struct convolution_transpose_backward_weights
                       const attr_t& attr = attr_t(),
                       algorithm aalgorithm = algorithm::deconvolution_direct,
                       const engine& aengine = engine::cpu_engine()) {
-    compute_impl</*with_diff_bias=*/true>(
-        src, diff_dst, diff_weights_dims, diff_weights, diff_bias,
-        strides, dilates, padding_l, padding_r, groups, attr, aalgorithm, aengine);
+   compute_impl</*with_diff_bias=*/true>(
+       src, diff_dst, diff_weights_dims, diff_weights, diff_bias,
+       strides, dilates, padding_l, padding_r, groups, attr, aalgorithm, aengine);
   }
 
   static void compute(const tensor& src,
@@ -829,7 +829,7 @@ struct convolution_transpose_backward_weights
     auto dilates_ = utils::get_compatible_dilates(dilates);
 
     // dim: [i, o, ...]
-    auto diff_weights_desc =
+    auto diff_weights_desc = 
         tensor::desc(diff_weights_dims, diff_dst.get_data_type(), tag::any);
 
     if (groups > 1) {
@@ -888,16 +888,16 @@ struct convolution_transpose_backward_weights
       diff_bias.reinit_if_possible(pd.diff_bias_desc());
       super(pd).execute(stream::default_stream(),
                         {{DNNL_ARG_DIFF_DST, expected_diff_dst},
-                        {DNNL_ARG_SRC, expected_src},
-                        {DNNL_ARG_DIFF_WEIGHTS, expected_diff_weights},
-                        {DNNL_ARG_DIFF_BIAS, diff_bias},
-                        {DNNL_ARG_SCRATCHPAD, scratchpad}});
+                         {DNNL_ARG_SRC, expected_src},
+                         {DNNL_ARG_DIFF_WEIGHTS, expected_diff_weights},
+                         {DNNL_ARG_DIFF_BIAS, diff_bias},
+                         {DNNL_ARG_SCRATCHPAD, scratchpad}});
     } else {
       super(pd).execute(stream::default_stream(),
                         {{DNNL_ARG_DIFF_DST, expected_diff_dst},
-                        {DNNL_ARG_SRC, expected_src},
-                        {DNNL_ARG_DIFF_WEIGHTS, expected_diff_weights},
-                        {DNNL_ARG_SCRATCHPAD, scratchpad}});
+                         {DNNL_ARG_SRC, expected_src},
+                         {DNNL_ARG_DIFF_WEIGHTS, expected_diff_weights},
+                         {DNNL_ARG_SCRATCHPAD, scratchpad}});
     }
 
     diff_weights.feed_from(expected_diff_weights, /*is_deconv_weights=*/true);
