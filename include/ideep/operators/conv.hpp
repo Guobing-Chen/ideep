@@ -253,7 +253,7 @@ struct conv_deconv_utils {
 
     // align weights data type with src
     dst_data_type = src.get_data_type() == data_type::bf16 ? data_type::bf16
-                                                           : data_type::f32;
+                                                            : data_type::f32;
     src_desc = src.get_desc().to_type(dst_data_type);
     weights_desc = weight_grouped.get_desc().to_type(dst_data_type);
 

@@ -809,7 +809,7 @@ struct convolution_transpose_backward_weights
         src, diff_dst, diff_weights_dims, diff_weights, dummy_diff_bias,
         strides, dilates, padding_l, padding_r, groups, attr, aalgorithm, aengine);
   }
- private:
+private:
   template <bool with_diff_bias>
   static void compute_impl(const tensor& src,
                            const tensor& diff_dst,
