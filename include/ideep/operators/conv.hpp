@@ -1044,16 +1044,17 @@ struct convolution_forward
                          prop_kind aprop_kind = prop_kind::forward,
                          const lowp_kind alowp_kind = u8s8,
                          const engine& aengine = engine::cpu_engine()) {
+    bool is_channels_last = src.get_desc().is_channels_last() || weights.get_desc().is_channels_last();
     if (bias.is_empty()) {
       compute_dispatch</*with_bias=*/false, true, true>(
           src, weights, bias, dst_dims, dst, strides, dilates,
           padding_l, padding_r, groups, src_scales, weights_scales, dst_scales,
-          src_zero_point, dst_zero_point, true, attr, aalgorithm, aprop_kind, alowp_kind, aengine);
+          src_zero_point, dst_zero_point, is_channels_last, attr, aalgorithm, aprop_kind, alowp_kind, aengine);
     } else {
       compute_dispatch</*with_bias=*/true, true, true>(
           src, weights, bias, dst_dims, dst, strides, dilates,
           padding_l, padding_r, groups, src_scales, weights_scales, dst_scales,
-          src_zero_point, dst_zero_point, true, attr, aalgorithm, aprop_kind, alowp_kind, aengine);
+          src_zero_point, dst_zero_point, is_channels_last, attr, aalgorithm, aprop_kind, alowp_kind, aengine);
     }
   }
 
@@ -1079,11 +1080,12 @@ struct convolution_forward
                          prop_kind aprop_kind = prop_kind::forward,
                          const lowp_kind alowp_kind = u8s8,
                          const engine& aengine = engine::cpu_engine()) {
+    bool is_channels_last = src.get_desc().is_channels_last() || weights.get_desc().is_channels_last();
     static tensor dummy_bias;
     compute_dispatch</*with_bias=*/false, true, true>(
         src, weights, dummy_bias, dst_dims, dst, strides, dilates,
         padding_l, padding_r, groups, src_scales, weights_scales, dst_scales,
-        src_zero_point, dst_zero_point, false, attr, aalgorithm, aprop_kind, alowp_kind, aengine);
+        src_zero_point, dst_zero_point, is_channels_last, attr, aalgorithm, aprop_kind, alowp_kind, aengine);
   }
 
   // 2-in-1 Conv computation with bias for fp32
@@ -1456,8 +1458,6 @@ struct convolution_forward
 
     // For nhwc path, weight uses format_tag::any,
     // while activation uses format_tag::nhwc.
-    // bool is_channels_last =
-    //     src_desc.is_channels_last() || weights_desc.is_channels_last();
     auto ndims = src_desc.get_dims().size();
     if (is_channels_last) {
       auto memory_format = tag::nhwc;
