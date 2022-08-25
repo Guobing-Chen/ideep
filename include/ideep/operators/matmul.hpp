@@ -718,7 +718,7 @@ struct matmul_forward : public dnnl::matmul,
         param, src, weights, bias, dst, bin_post_params);
   }
 
-  // For 2-in-1 compute: prepare + compute
+  // For 2-in-1 compute with binary post-op: prepare + compute
   // Supports fp32.
   template <bool with_bias, bool reorder_src = true, bool reorder_weight = true>
   static inline void compute_binary_impl(
@@ -738,7 +738,7 @@ struct matmul_forward : public dnnl::matmul,
         param, src, other, weights, bias, dst);
   }
 
-  // For 2-in-1 compute: prepare + compute
+  // For 2-in-1 compute with binary post-op: prepare + compute
   // Supports int8.
   template <bool with_bias, bool reorder_src = true, bool reorder_weight = true>
   static inline void compute_binary_impl(

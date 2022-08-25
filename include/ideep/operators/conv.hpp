@@ -380,7 +380,7 @@ struct convolution_forward
   }
 
   // 2-in-1 compute for fp32 with bias
-  // This one does not have `is_channels_last` argument to keep compatibility
+  // This one does not have `is_channels_last` argument for compatibility
   template <bool reorder_src = true, bool reorder_weight = true>
   static void compute(const tensor& src,
                       const tensor& weights,
@@ -409,7 +409,7 @@ struct convolution_forward
   }
 
   // 2-in-1 compute for fp32 without bias
-  // This one does not have `is_channels_last` argument to keep compatibility
+  // This one does not have `is_channels_last` argument for compatibility
   template <bool reorder_src = true, bool reorder_weight = true>
   static void compute(const tensor& src,
                       const tensor& weights,
@@ -508,7 +508,7 @@ struct convolution_forward
   }
 
   // 2-in-1 compute for int8 without bias
-  // This one does not have `is_channels_last` argument to keep compatibility
+  // This one does not have `is_channels_last` argument for compatibility
   template <bool reorder_src = true, bool reorder_weight = true>
   static void compute(const tensor& src,
                       const tensor& weights,
@@ -547,7 +547,7 @@ struct convolution_forward
   }
 
   // 2-in-1 compute for int8 with bias
-  // This one does not have `is_channels_last` argument to keep compatibility
+  // This one does not have `is_channels_last` argument for compatibility
   template <bool reorder_src = true, bool reorder_weight = true>
   static void compute(const tensor& src,
                       const tensor& weights,
@@ -753,8 +753,8 @@ struct convolution_forward
         attr, aalgorithm, aprop_kind, aengine);
   }
 
-  // Prepare for fp32 post-op with bias
-  // This one does not have `is_channels_last` argument to keep compatibility
+  // Prepare for fp32 with bias
+  // This one does not have `is_channels_last` argument for compatibility
   static void prepare(convolution_forward_params& param,
                       const tensor& src,
                       const tensor& weights,
@@ -784,8 +784,8 @@ struct convolution_forward
     }
   }
 
-  // Prepare for fp32 post-op without bias
-  // This one does not have `is_channels_last` argument to keep compatibility
+  // Prepare for fp32 without bias
+  // This one does not have `is_channels_last` argument for compatibility
   static void prepare(convolution_forward_params& param,
                       const tensor& src,
                       const tensor& weights,
@@ -880,8 +880,8 @@ struct convolution_forward
         attr, aalgorithm, aprop_kind, alowp_kind, aengine);
   }
 
-  // Prepare for int8 without bias
-  // This one does not have `is_channels_last` argument to keep compatibility
+  // Prepare for int8 with bias
+  // This one does not have `is_channels_last` argument for compatibility
   static void prepare(convolution_forward_params& param,
                       const tensor& src,
                       const tensor& weights,
@@ -920,7 +920,7 @@ struct convolution_forward
   }
 
   // Prepare for int8 without bias
-  // This one does not have `is_channels_last` argument to keep compatibility
+  // This one does not have `is_channels_last` argument for compatibility
   static void prepare(convolution_forward_params& param,
                       const tensor& src,
                       const tensor& weights,
