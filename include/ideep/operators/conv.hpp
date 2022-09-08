@@ -1287,6 +1287,7 @@ struct convolution_forward
 
   // DEPRECATED
   // compute with param and primitive. With bias
+  // Weight is supposed to be prepacked
   static void compute(
       const convolution_forward_params& param,
       const dnnl::convolution_forward& prim,
@@ -1306,6 +1307,7 @@ struct convolution_forward
 
   // DEPRECATED
   // compute with param and primitive. Without bias
+  // Weight is supposed to be prepacked
   static void compute(
       const convolution_forward_params& param,
       const dnnl::convolution_forward& prim,
